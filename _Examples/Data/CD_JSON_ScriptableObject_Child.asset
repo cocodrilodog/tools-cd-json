@@ -1,0 +1,70 @@
+%YAML 1.1
+%TAG !u! tag:unity3d.com,2011:
+--- !u!114 &11400000
+MonoBehaviour:
+  m_ObjectHideFlags: 0
+  m_CorrespondingSourceObject: {fileID: 0}
+  m_PrefabInstance: {fileID: 0}
+  m_PrefabAsset: {fileID: 0}
+  m_GameObject: {fileID: 0}
+  m_Enabled: 1
+  m_EditorHideFlags: 0
+  m_Script: {fileID: 11500000, guid: ec5f867fbcdf44793833050c1a4b4563, type: 3}
+  m_Name: CD_JSON_ScriptableObject_Child
+  m_EditorClassIdentifier: 
+  m_Class1:
+    SomeString1: Hello, my friend child
+    SomeFloat1: 1.123
+    SomeDouble1: 1.1234568357467651
+    SomeInt1: 40
+    SomeBool1: 1
+    SomeClass2_1:
+      SomeString2: Hi, how are you?  child
+      SomeFloat2: 2.123
+      SomeDouble2: 2.1234567165374756
+      SomeInt2: 38
+      SomeBool2: 1
+      SomeStringArray2:
+      - Twenty One  child
+      - Twenty Two child
+      SomeStringList2: []
+      SomeClass3_2:
+        SomeString3: I am a penguin  child
+        SomeFloat3: 3.1234567
+        SomeDouble3: 3.1234567165374756
+        SomeInt3: 10
+        SomeBool3: 1
+      ExtraBool2: 1
+    SomeStringArray1:
+    - Eleven  child
+    - Twelve  child
+    SomeStringList1:
+    - Fourteen  child
+    - Fifteen  child
+    - Sixteen  child
+    SomeFloatArray1:
+    - 11.123457
+    - 12.12346
+    - 13.12346
+    SomeFloatList1:
+    - 14.12346
+    - 15.12346
+    - 16.12346
+    - 17.12346
+    - 18.12346
+    SomeClass4Array:
+    - SomeString4: Element1  child
+      SomeFloat4: 41.123455
+      SomeBool4: 1
+    - SomeString4: Element2  child
+      SomeFloat4: 42.12346
+      SomeBool4: 1
+    - SomeString4: Element3  child
+      SomeFloat4: 43.12346
+      SomeBool4: 1
+  m_ChildSO: {fileID: 0}
+  m_SomeOtherString: Child
+  m_PolymorphicList:
+  - {fileID: 11400000, guid: 24ac38b0b334bb0449ac961cc0ff6053, type: 2}
+  - {fileID: 0}
+  - {fileID: 11400000, guid: 3b7cfb26c531b7348b5989fd2dabad23, type: 2}

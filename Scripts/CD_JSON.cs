@@ -146,7 +146,7 @@ namespace CocodriloDog.CD_JSON {
 								break;
 							}
 							var lineFieldValue = line[1];
-							var lineFieldInfo = instance.GetType().GetField(lineFieldName, BindingFlags);
+							var lineFieldInfo = GetFieldInfo(instance.GetType(), lineFieldName);
 							if(lineFieldInfo.FieldType == typeof(string)) {
 								lineFieldValue = CleanStringValue(lineFieldValue);
 							} else {
@@ -162,17 +162,7 @@ namespace CocodriloDog.CD_JSON {
 
 							// Get the info of this field
 							var lineFieldName = Clean(jsonLines[i]);
-							var lineFieldInfo = instance.GetType().GetField(lineFieldName, BindingFlags);
-
-							// In case it is not found in the current type, search for it in base types
-							Type baseType = type;
-							while (lineFieldInfo == null) {
-								baseType = baseType.BaseType;
-								if (baseType == null) {
-									break;
-								}
-								lineFieldInfo = baseType.GetField(lineFieldName, BindingFlags);
-							}
+							var lineFieldInfo = GetFieldInfo(instance.GetType(), lineFieldName);
 
 							// Temporarily store the composite field instance to restore upon closing brace
 							parentRefStack ??= new Stack<ParentCompositeRef>();
@@ -180,7 +170,7 @@ namespace CocodriloDog.CD_JSON {
 
 							if (IsArrayOrList(lineFieldInfo.FieldType)) {
 
-								Debug.Log("ARRAY OR LIST");
+								//Debug.Log("ARRAY OR LIST");
 
 								// First isolate and store JSON text that comprises the array or list
 								var arrayJSON = "";
@@ -197,7 +187,7 @@ namespace CocodriloDog.CD_JSON {
 										internalArrayOrList--;
 									}
 									// Add each line to the arrayJSON
-									Debug.Log($"{nextLine}");
+									//Debug.Log($"{nextLine}");
 									arrayJSON += nextLine + "\n";
 									nextLine = jsonLines[++i];
 								}
@@ -205,7 +195,7 @@ namespace CocodriloDog.CD_JSON {
 
 								// Remove extra '\n' from the end
 								arrayJSON = arrayJSON.TrimEnd();
-								Debug.Log($"RESULT: {arrayJSON}");
+								//Debug.Log($"RESULT:\n{arrayJSON}");
 
 								// Create an array of strings with the serialized elements
 								String[] elementJSONs;
@@ -217,6 +207,10 @@ namespace CocodriloDog.CD_JSON {
 									// To parse the enumerable elements, separate the array JSON text by ','
 									elementJSONs = arrayJSON.Split(',');
 								}
+
+								//for (var k = 0; k < elementJSONs.Length; k++) {
+								//	Debug.Log($"ELEMENT JSON [{k}]:\n{elementJSONs[k]}");
+								//}
 
 								// Create either the array or list
 								Type arrayOrListType;
@@ -291,8 +285,8 @@ namespace CocodriloDog.CD_JSON {
 							if (parentRefStack != null && parentRefStack.Count > 0) {
 								// Get the parent reference
 								var parentRef = parentRefStack.Pop();
-								// Get the field of the children that belongs to the composite
-								var child_fieldInfo = parentRef.Instance.GetType().GetField(parentRef.ChildFieldName, BindingFlags);
+								// Get the field of the children that belongs to the composites
+								var child_fieldInfo = GetFieldInfo(parentRef.Instance.GetType(), parentRef.ChildFieldName);
 								// Assign the child instance to the composite instance
 								child_fieldInfo.SetValue(parentRef.Instance, instance);
 								// Give control back to the composite instance
@@ -362,6 +356,19 @@ namespace CocodriloDog.CD_JSON {
 
 			return fieldInfosList.ToArray();
 
+		}
+
+		private static FieldInfo GetFieldInfo(Type type, string fieldName) {
+			var fieldInfo = type.GetField(fieldName, BindingFlags);
+			var baseType = type;
+			while (fieldInfo == null) {
+				baseType = baseType.BaseType;
+				if (baseType == null) {
+					break;
+				}
+				fieldInfo = baseType.GetField(fieldName, BindingFlags);
+			}
+			return fieldInfo;
 		}
 
 		/// <summary>
@@ -565,6 +572,15 @@ namespace CocodriloDog.CD_JSON {
 		public ParentCompositeRef(object instance, string childFieldName) {
 			m_Instance = instance;
 			m_ChildFieldName = childFieldName;
+		}
+
+		#endregion
+
+
+		#region Public Methods
+
+		public override string ToString() {
+			return $"[ParentCompositeRef: Instance:{Instance}; ChildFieldName:{ChildFieldName}]";
 		}
 
 		#endregion

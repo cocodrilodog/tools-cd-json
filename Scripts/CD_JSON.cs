@@ -160,9 +160,19 @@ namespace CocodriloDog.CD_JSON {
 
 					case JSONLineKind.CompositeFieldName: {
 
-							// get the info of this field
+							// Get the info of this field
 							var lineFieldName = Clean(jsonLines[i]);
 							var lineFieldInfo = instance.GetType().GetField(lineFieldName, BindingFlags);
+
+							// In case it is not found in the current type, search for it in base types
+							Type baseType = type;
+							while (lineFieldInfo == null) {
+								baseType = baseType.BaseType;
+								if (baseType == null) {
+									break;
+								}
+								lineFieldInfo = baseType.GetField(lineFieldName, BindingFlags);
+							}
 
 							// Temporarily store the composite field instance to restore upon closing brace
 							parentRefStack ??= new Stack<ParentCompositeRef>();
@@ -170,14 +180,24 @@ namespace CocodriloDog.CD_JSON {
 
 							if (IsArrayOrList(lineFieldInfo.FieldType)) {
 
+								Debug.Log("ARRAY OR LIST");
+
 								// First isolate and store JSON text that comprises the array or list
 								var arrayJSON = "";
 
 								// Parse all lines between '[' and ']'
 								i++; // Skip the '[' character
 								var nextLine = jsonLines[++i];
-								while (GetJSONLineKind(nextLine) != JSONLineKind.SquareClose) {
+								var internalArrayOrList = 0;
+
+								while (GetJSONLineKind(nextLine) != JSONLineKind.SquareClose || internalArrayOrList > 0) {
+									if (GetJSONLineKind(nextLine) == JSONLineKind.SquareOpen) {
+										internalArrayOrList++;
+									} else if (GetJSONLineKind(nextLine) == JSONLineKind.SquareClose) {
+										internalArrayOrList--;
+									}
 									// Add each line to the arrayJSON
+									Debug.Log($"{nextLine}");
 									arrayJSON += nextLine + "\n";
 									nextLine = jsonLines[++i];
 								}
@@ -185,6 +205,7 @@ namespace CocodriloDog.CD_JSON {
 
 								// Remove extra '\n' from the end
 								arrayJSON = arrayJSON.TrimEnd();
+								Debug.Log($"RESULT: {arrayJSON}");
 
 								// Create an array of strings with the serialized elements
 								String[] elementJSONs;
@@ -359,6 +380,9 @@ namespace CocodriloDog.CD_JSON {
 
 			// Open list
 			iEnumerableJSON += $"{namePart}\n\t[\n";
+			if (fieldValue == null) {
+				return $"{namePart}null\n";
+			}
 			// Add elements
 			foreach (var element in (IEnumerable)fieldValue) {
 				if (element == null) {

@@ -173,7 +173,7 @@ namespace CocodriloDog.CD_JSON {
 								// First isolate and store JSON text that comprises the array or list
 								//var arrayJSON = "";
 
-								// Parse all lines between '[' and ']'
+								// Parse all lines between '[' and ']' which comprises the array or list json
 								i++; // Skip the '[' character
 								var nextLine = jsonLines[++i];
 								var childArrayOrList = 0;
@@ -181,7 +181,6 @@ namespace CocodriloDog.CD_JSON {
 								// Create an array of strings with the serialized elements
 								List<String> elementJSONs = new List<string>();
 
-								// Parse the array json
 								while (GetJSONLineKind(nextLine) != JSONLineKind.SquareClose || childArrayOrList > 0) {
 									// If a child array or list is found, this prevents the parsing to break
 									// before the end of the main array or list

@@ -170,16 +170,18 @@ namespace CocodriloDog.CD_JSON {
 
 							if (IsArrayOrList(lineFieldInfo.FieldType)) {
 
-								//Debug.Log("ARRAY OR LIST");
-
 								// First isolate and store JSON text that comprises the array or list
-								var arrayJSON = "";
+								//var arrayJSON = "";
 
 								// Parse all lines between '[' and ']'
 								i++; // Skip the '[' character
 								var nextLine = jsonLines[++i];
 								var childArrayOrList = 0;
 
+								// Create an array of strings with the serialized elements
+								List<String> elementJSONs = new List<string>();
+
+								// Parse the array json
 								while (GetJSONLineKind(nextLine) != JSONLineKind.SquareClose || childArrayOrList > 0) {
 									// If a child array or list is found, this prevents the parsing to break
 									// before the end of the main array or list
@@ -188,38 +190,27 @@ namespace CocodriloDog.CD_JSON {
 									} else if (GetJSONLineKind(nextLine) == JSONLineKind.SquareClose) {
 										childArrayOrList--;
 									}
-									// Add each line to the arrayJSON
-									//Debug.Log($"{nextLine}");
-									arrayJSON += nextLine + "\n";
+									// If there are no elements yet, we create the first one								
+									if (elementJSONs.Count == 0) {
+										elementJSONs.Add("");
+									}
+									// We add the next lines to the last element
+									elementJSONs[elementJSONs.Count - 1] += nextLine + "\n";
+									// Until we identify an end of element and then add a new element, but
+									// we make sure that the end of element is not part of a child array or list
+									if ((IsEndOfElementJSONLine(nextLine) && childArrayOrList == 0)) {
+										elementJSONs.Add("");
+									}
 									nextLine = jsonLines[++i];
 								}
 								i--; // Go back to the ']' character
-
-								// Remove extra '\n' from the end
-								arrayJSON = arrayJSON.TrimEnd();
-								//Debug.Log($"RESULT:\n{arrayJSON}");
-
-								// Create an array of strings with the serialized elements
-								String[] elementJSONs;
-								if (string.IsNullOrEmpty(arrayJSON)) {
-									// When the array string is empty, we must create an empty string array. Otherwise the
-									// code inside the else would create an array with one element out of the empty string.
-									elementJSONs = new string[0];
-								} else {
-									// To parse the enumerable elements, separate the array JSON text by ','
-									elementJSONs = arrayJSON.Split(',');
-								}
-
-								//for (var k = 0; k < elementJSONs.Length; k++) {
-								//	Debug.Log($"ELEMENT JSON [{k}]:\n{elementJSONs[k]}");
-								//}
 
 								// Create either the array or list
 								Type arrayOrListType;
 								if (lineFieldInfo.FieldType.IsArray) {
 									// Create the array
 									arrayOrListType = lineFieldInfo.FieldType.GetElementType();
-									instance = Array.CreateInstance(arrayOrListType, elementJSONs.Length);
+									instance = Array.CreateInstance(arrayOrListType, elementJSONs.Count);
 								} else {
 									// Create the list
 									arrayOrListType = lineFieldInfo.FieldType.GenericTypeArguments[0];
@@ -227,7 +218,7 @@ namespace CocodriloDog.CD_JSON {
 									instance = Activator.CreateInstance(genericType);
 									// Populate it with default value so that final values can be assigned via indexers []
 									var listInstance = ((IList)instance);
-									for (int j = 0; j < elementJSONs.Length; j++) {
+									for (int j = 0; j < elementJSONs.Count; j++) {
 										if (arrayOrListType.IsValueType) {
 											listInstance.Add(Activator.CreateInstance(arrayOrListType));
 										} else {
@@ -241,7 +232,7 @@ namespace CocodriloDog.CD_JSON {
 								var elementIsLeaf = IsLeaf(arrayOrListType);
 								// Make this cast to use the indexers []
 								var indexedInstance = (IList)instance;
-								for (var k = 0; k < elementJSONs.Length; k++) {
+								for (var k = 0; k < elementJSONs.Count; k++) {
 									if (elementIsLeaf) {
 										// Leaf object
 										indexedInstance[k] = DeserializeValue(Clean(elementJSONs[k]), arrayOrListType);
@@ -512,6 +503,13 @@ namespace CocodriloDog.CD_JSON {
 			return JSONLineKind.None;
 
 		}
+
+		/// <summary>
+		/// Determines whether this line is the end of an array or list element.
+		/// </summary>
+		/// <param name="jsonLine">The json line to analyse</param>
+		/// <returns></returns>
+		private static bool IsEndOfElementJSONLine(string jsonLine) => jsonLine.TrimEnd().Contains(',');
 
 		/// <summary>
 		/// Deserializes the provided <paramref name="stringValue"/> and returns an instance

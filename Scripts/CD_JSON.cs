@@ -178,13 +178,15 @@ namespace CocodriloDog.CD_JSON {
 								// Parse all lines between '[' and ']'
 								i++; // Skip the '[' character
 								var nextLine = jsonLines[++i];
-								var internalArrayOrList = 0;
+								var childArrayOrList = 0;
 
-								while (GetJSONLineKind(nextLine) != JSONLineKind.SquareClose || internalArrayOrList > 0) {
+								while (GetJSONLineKind(nextLine) != JSONLineKind.SquareClose || childArrayOrList > 0) {
+									// If a child array or list is found, this prevents the parsing to break
+									// before the end of the main array or list
 									if (GetJSONLineKind(nextLine) == JSONLineKind.SquareOpen) {
-										internalArrayOrList++;
+										childArrayOrList++;
 									} else if (GetJSONLineKind(nextLine) == JSONLineKind.SquareClose) {
-										internalArrayOrList--;
+										childArrayOrList--;
 									}
 									// Add each line to the arrayJSON
 									//Debug.Log($"{nextLine}");

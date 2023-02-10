@@ -140,7 +140,9 @@ namespace CocodriloDog.CD_JSON {
 				switch (lineKind) {
 
 					case JSONLineKind.LeafOrNullField: {
-							var line = jsonLines[i].Split(':');
+							// Limiting the split to 2, avoids error when parsing strings with ':'
+							// For example: "m_SleepTime": "11:11 am"
+							var line = jsonLines[i].Split(':', 2);
 							var lineFieldName = Clean(line[0]);
 							if(lineFieldName == "cd_json_type") {
 								break;
@@ -544,7 +546,7 @@ namespace CocodriloDog.CD_JSON {
 		/// <param name="line">The serialized line for that field</param>
 		/// <returns>The type that corresponds to the type full name</returns>
 		private static Type GetTypeFromJSONLine(string line) {
-			var typeFullName = Clean(line.Split(':')[1]);
+			var typeFullName = Clean(line.Split(':', 2)[1]);
 			var assembly = typeof(CD_JSON).Assembly;
 			return assembly.GetType(typeFullName);
 		}

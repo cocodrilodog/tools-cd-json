@@ -149,6 +149,11 @@ namespace CocodriloDog.CD_JSON {
 							}
 							var lineFieldValue = line[1];
 							var lineFieldInfo = GetFieldInfo(instance.GetType(), lineFieldName);
+							// If the json has an outdated property, this will ignore it and avoid an error
+							// TODO: Apply this logic to the other JSONLineKinds
+							if(lineFieldInfo == null) {
+								break;
+							}
 							if(lineFieldInfo.FieldType == typeof(string)) {
 								lineFieldValue = CleanStringValue(lineFieldValue);
 							} else {

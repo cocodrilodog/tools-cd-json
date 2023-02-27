@@ -268,6 +268,9 @@ namespace CocodriloDog.CD_JSON {
 								} else {
 									// Get the object type from the "cd_json_type" field
 									var objType = GetTypeFromJSONLine(jsonLines[i + 2]);
+									if(objType == null) {
+										Debug.Log($"NULL TYPE: {jsonLines[i + 2]}");
+									}
 									if (typeof(ScriptableObject).IsAssignableFrom(objType)) {
 										instance = ScriptableObject.CreateInstance(objType);
 									} else {
@@ -551,9 +554,20 @@ namespace CocodriloDog.CD_JSON {
 		/// <param name="line">The serialized line for that field</param>
 		/// <returns>The type that corresponds to the type full name</returns>
 		private static Type GetTypeFromJSONLine(string line) {
+
 			var typeFullName = Clean(line.Split(':', 2)[1]);
-			var assembly = typeof(CD_JSON).Assembly;
-			return assembly.GetType(typeFullName);
+
+			Type type = null;
+			Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
+			foreach(var assembly in assemblies) {
+				type = assembly.GetType(typeFullName);
+				if(type != null) {
+					break;
+				}
+			}
+
+			return type;
+
 		}
 
 		#endregion

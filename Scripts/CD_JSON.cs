@@ -175,6 +175,11 @@ namespace CocodriloDog.CD_JSON {
 							parentRefStack ??= new Stack<ParentCompositeRef>();
 							parentRefStack.Push(new ParentCompositeRef(instance, lineFieldName));
 
+							if(lineFieldInfo == null) {
+								// TODO: At this point, if an outdated composite field is found, we must ignore it, 
+								// but we must jump up to a point where the next property starts
+							}
+
 							if (IsArrayOrList(lineFieldInfo.FieldType)) {
 
 								// First isolate and store JSON text that comprises the array or list
@@ -350,10 +355,20 @@ namespace CocodriloDog.CD_JSON {
 
 			List<FieldInfo> fieldInfosList = new List<FieldInfo>();
 
+			// Add the fields of the type
 			fieldInfosList.AddRange(type.GetFields(BindingFlags));
+
+			// Add the inherited fields too
 			while (type.BaseType != null) {
 				type = type.BaseType;
 				fieldInfosList.AddRange(type.GetFields(BindingFlags));
+			}
+
+			// Remove non-serialized fields (otherwise they will be serialized)
+			for(int i = fieldInfosList.Count - 1; i >= 0; i--) {
+				if (fieldInfosList[i].IsNotSerialized) {
+					fieldInfosList.RemoveAt(i);
+				}
 			}
 
 			return fieldInfosList.ToArray();

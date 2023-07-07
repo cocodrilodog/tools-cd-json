@@ -72,7 +72,7 @@ namespace CocodriloDog.CD_JSON {
 
 				// Format for leaf fields
 				if (IsLeaf(fieldInfos[i].FieldType)) {
-					if(fieldInfos[i].FieldType == typeof(string)) { // <- Strings have quotation
+					if(fieldInfos[i].FieldType == typeof(string)) { // Strings have quotation
 						objJSON += $"{namePart}\"{fieldInfos[i].GetValue(obj)}\"";
 					} else if (fieldInfos[i].FieldType == typeof(bool)) {
 						var boolStringValue = (bool)fieldInfos[i].GetValue(obj) ? JSON_True : JSON_False;
@@ -94,7 +94,8 @@ namespace CocodriloDog.CD_JSON {
 						if (childObjString == JSON_Null) {
 							objJSON += $"{namePart}{childObjString}";
 						} else {
-							objJSON += $"{namePart}\n{Indent(childObjString)}";
+							// TrimStart() removes the indent from the first curly brace
+							objJSON += $"{namePart}{Indent(childObjString).TrimStart()}";
 						}
 					}
 					AddCommaAndNewLine(i == fieldInfos.Count - 1);
@@ -430,18 +431,27 @@ namespace CocodriloDog.CD_JSON {
 			var iEnumerableJSON = "";
 
 			// Open list
-			iEnumerableJSON += $"{namePart}\n\t[\n";
+			iEnumerableJSON += $"{namePart}[";
+
+			// Null list or array
 			if (fieldValue == null) {
 				return $"{namePart}{JSON_Null}\n";
 			}
+
+			bool isEmpty = true;
 			// Add elements
 			foreach (var element in (IEnumerable)fieldValue) {
 				if (element == null) {
 					iEnumerableJSON += $"{Indent(Indent(JSON_Null))},\n";
 				} else {
+					// Create the first new line after the openning bracket
+					if (isEmpty) {
+						isEmpty = false;
+						iEnumerableJSON += "\n";
+					}
 					// Leaf element
 					if (IsLeaf(element.GetType())) {
-						if (element.GetType() == typeof(string)) { // <- Strings have quotation
+						if (element.GetType() == typeof(string)) { // Strings have quotation
 							iEnumerableJSON += $"\t\t\"{element}\",\n";
 						} else {
 							iEnumerableJSON += $"\t\t{element},\n";
@@ -462,11 +472,16 @@ namespace CocodriloDog.CD_JSON {
 					}
 				}
 			}
+			
 			// Remove the last '\n' and ','
 			iEnumerableJSON = iEnumerableJSON.TrimEnd().TrimEnd(',');
-			// Close list
-			iEnumerableJSON += $"\n\t]"; // <- The first '\n' is replacing the previously removed '\n'
 
+			// Close list
+			if (isEmpty) {
+				iEnumerableJSON += $"]"; // Closes the array or list in the same line
+			} else {
+				iEnumerableJSON += $"\n\t]"; // The first '\n' is replacing the previously removed '\n'
+			}
 			return iEnumerableJSON;
 
 		}
@@ -495,7 +510,7 @@ namespace CocodriloDog.CD_JSON {
 			var indented = "";
 			for (var i = 0; i < lines.Length; i++) {
 				indented += $"\t{lines[i]}";
-				if (i < lines.Length - 1) { // <- This avoids adding a new line after the closing curly brace
+				if (i < lines.Length - 1) { // This avoids adding a new line after the closing curly brace
 					indented += "\n";
 				}
 			}

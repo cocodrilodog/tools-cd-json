@@ -14,13 +14,13 @@ namespace CocodriloDog.CD_JSON.Examples {
 			
 			var serializedClass1 = CD_JSON.Serialize(m_Class1);
 			Debug.Log($"serializedClass1:\n{serializedClass1}");
-			var deserializedClass1 = CD_JSON.Deserialize<Class1>(serializedClass1);
-			Debug.Log($"deserializedClass1:{deserializedClass1}");
+			//var deserializedClass1 = CD_JSON.Deserialize<Class1>(serializedClass1);
+			//Debug.Log($"deserializedClass1:{deserializedClass1}");
 
-			var serializedSO = CD_JSON.Serialize(m_OriginalSO);
-			Debug.Log($"serializedSO:\n{serializedSO}");
-			m_DeserializedSO = CD_JSON.Deserialize<CD_JSON_ScriptableObject>(serializedSO);
-			Debug.Log($"m_DeserializedSO: {m_DeserializedSO}");
+			//var serializedSO = CD_JSON.Serialize(m_OriginalSO);
+			//Debug.Log($"serializedSO:\n{serializedSO}");
+			//m_DeserializedSO = CD_JSON.Deserialize<CD_JSON_ScriptableObject>(serializedSO);
+			//Debug.Log($"m_DeserializedSO: {m_DeserializedSO}");
 
 		}
 
@@ -96,6 +96,8 @@ namespace CocodriloDog.CD_JSON.Examples {
 			[SerializeField]
 			public Class4[] SomeClass4Array;
 
+			[SerializeField]
+			public string FinalString;
 
 			#endregion
 

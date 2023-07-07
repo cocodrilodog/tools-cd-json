@@ -52,13 +52,14 @@ namespace CocodriloDog.CD_JSON {
 			var objJSON = "{\n";
 
 			// Add CD_JSON special fields
-			objJSON += $"\t\"cd_json_type\":\"{obj.GetType().FullName}\"\n";
+			objJSON += $"\t\"cd_json_type\": \"{obj.GetType().FullName}\"";
+			AddCommaAndNewLine(fieldInfos.Count == 0);
 
 			for (var i = 0; i < fieldInfos.Count; i++) {
 
+				// Bypass Unity internal fields
 				var isUnityInternal =
 					fieldInfos[i].Name == "m_CachedPtr" ||
-					fieldInfos[i].Name == "m_InstanceID" ||
 					fieldInfos[i].Name == "m_InstanceID" ||
 					fieldInfos[i].Name == "m_UnityRuntimeErrorString";
 
@@ -72,10 +73,11 @@ namespace CocodriloDog.CD_JSON {
 				// Format for leaf fields
 				if (IsLeaf(fieldInfos[i].FieldType)) {
 					if(fieldInfos[i].FieldType == typeof(string)) { // <- Strings have quotation
-						objJSON += $"{namePart}\"{fieldInfos[i].GetValue(obj)}\"\n";
+						objJSON += $"{namePart}\"{fieldInfos[i].GetValue(obj)}\"";
 					} else {
-						objJSON += $"{namePart}{fieldInfos[i].GetValue(obj)}\n"; 
+						objJSON += $"{namePart}{fieldInfos[i].GetValue(obj)}"; 
 					}
+					AddCommaAndNewLine(i == fieldInfos.Count - 1);
 				}
 				// Format for composite fields (arrays, lists and objects with properties)
 				else {
@@ -87,11 +89,12 @@ namespace CocodriloDog.CD_JSON {
 					else {
 						var childObjString = $"{Serialize(fieldInfos[i].GetValue(obj))}";
 						if (childObjString == "null") {
-							objJSON += $"{namePart}{childObjString}\n";
+							objJSON += $"{namePart}{childObjString}";
 						} else {
-							objJSON += $"{namePart}\n{Indent(childObjString)}\n";
+							objJSON += $"{namePart}\n{Indent(childObjString)}";
 						}
 					}
+					AddCommaAndNewLine(i == fieldInfos.Count - 1);
 				}
 
 			}
@@ -100,6 +103,14 @@ namespace CocodriloDog.CD_JSON {
 			objJSON += "}";
 
 			return objJSON;
+
+			// Local utility
+			void AddCommaAndNewLine(bool excludeComma) {
+				if (!excludeComma) {
+					objJSON += ",";
+				}
+				objJSON += "\n";
+			}
 
 		}
 
@@ -123,6 +134,7 @@ namespace CocodriloDog.CD_JSON {
 		/// <returns>The JSON representation of the object</returns>
 		public static object Deserialize(Type type, string json) {
 
+			/*
 			object instance;
 			if (typeof(ScriptableObject).IsAssignableFrom(type)){
 				instance = ScriptableObject.CreateInstance(type);
@@ -307,7 +319,8 @@ namespace CocodriloDog.CD_JSON {
 			}
 
 			return instance;
-
+			*/
+			return null;
 		}
 
 		#endregion
@@ -438,7 +451,7 @@ namespace CocodriloDog.CD_JSON {
 			// Remove the last '\n' and ','
 			iEnumerableJSON = iEnumerableJSON.TrimEnd().TrimEnd(',');
 			// Close list
-			iEnumerableJSON += $"\n\t]\n"; // <- The first '\n' is replacing the previously removed '\n'
+			iEnumerableJSON += $"\n\t]"; // <- The first '\n' is replacing the previously removed '\n'
 
 			return iEnumerableJSON;
 

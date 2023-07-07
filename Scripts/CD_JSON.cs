@@ -35,7 +35,7 @@ namespace CocodriloDog.CD_JSON {
         public static string Serialize(object obj) {
 
 			if (obj == null) {
-				return "null";
+				return JSON_Null;
 			}
 
 			// Get the fields of the root object
@@ -74,8 +74,11 @@ namespace CocodriloDog.CD_JSON {
 				if (IsLeaf(fieldInfos[i].FieldType)) {
 					if(fieldInfos[i].FieldType == typeof(string)) { // <- Strings have quotation
 						objJSON += $"{namePart}\"{fieldInfos[i].GetValue(obj)}\"";
+					} else if (fieldInfos[i].FieldType == typeof(bool)) {
+						var boolStringValue = (bool)fieldInfos[i].GetValue(obj) ? JSON_True : JSON_False;
+						objJSON += $"{namePart}{boolStringValue}";
 					} else {
-						objJSON += $"{namePart}{fieldInfos[i].GetValue(obj)}"; 
+						objJSON += $"{namePart}{fieldInfos[i].GetValue(obj)}";
 					}
 					AddCommaAndNewLine(i == fieldInfos.Count - 1);
 				}
@@ -88,7 +91,7 @@ namespace CocodriloDog.CD_JSON {
 					// Format for non-list composite (Object with properties). Apply recursion
 					else {
 						var childObjString = $"{Serialize(fieldInfos[i].GetValue(obj))}";
-						if (childObjString == "null") {
+						if (childObjString == JSON_Null) {
 							objJSON += $"{namePart}{childObjString}";
 						} else {
 							objJSON += $"{namePart}\n{Indent(childObjString)}";
@@ -326,6 +329,17 @@ namespace CocodriloDog.CD_JSON {
 		#endregion
 
 
+		#region Private Constants
+
+		private const string JSON_Null = "\"NULL\"";
+
+		private const string JSON_True = "\"TRUE\"";
+
+		private const string JSON_False = "\"FALSE\"";
+
+		#endregion
+
+
 		#region Private Static properties
 
 		/// <summary>
@@ -418,12 +432,12 @@ namespace CocodriloDog.CD_JSON {
 			// Open list
 			iEnumerableJSON += $"{namePart}\n\t[\n";
 			if (fieldValue == null) {
-				return $"{namePart}null\n";
+				return $"{namePart}{JSON_Null}\n";
 			}
 			// Add elements
 			foreach (var element in (IEnumerable)fieldValue) {
 				if (element == null) {
-					iEnumerableJSON += $"{Indent(Indent("null"))},\n";
+					iEnumerableJSON += $"{Indent(Indent(JSON_Null))},\n";
 				} else {
 					// Leaf element
 					if (IsLeaf(element.GetType())) {

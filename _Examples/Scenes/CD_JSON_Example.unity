@@ -275,7 +275,7 @@ MonoBehaviour:
     SomeFloat1: 1.1234568
     SomeDouble1: 1.1234567891234568
     SomeInt1: 40
-    SomeBool1: 1
+    SomeBool1: 0
     SomeClass2_1:
       SomeString2: Hi, how are you?
       SomeFloat2: 2.1234567

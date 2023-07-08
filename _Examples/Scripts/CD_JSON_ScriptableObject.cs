@@ -20,7 +20,16 @@ namespace CocodriloDog.CD_JSON.Examples {
 		private string m_SomeOtherString;
 
 		[SerializeField]
+		private List<bool> m_ListOfBool;
+
+		[SerializeField]
+		public List<string> m_NullList;
+
+		[SerializeField]
 		private List<CD_JSON_PolymorphicBase> m_PolymorphicList;
+
+		[SerializeField]
+		public List<string> m_FinalNullList;
 
 		#endregion
 

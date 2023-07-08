@@ -13,13 +13,16 @@ namespace CocodriloDog.CD_JSON.Examples {
 		private void Start() {
 			
 			var serializedClass1 = CD_JSON.Serialize(m_Class1);
-			Debug.Log($"serializedClass1:\n{serializedClass1}");
+			//Debug.Log($"serializedClass1:\n{serializedClass1}");
 			//var deserializedClass1 = CD_JSON.Deserialize<Class1>(serializedClass1);
 			//Debug.Log($"deserializedClass1:{deserializedClass1}");
 
-			//var serializedSO = CD_JSON.Serialize(m_OriginalSO);
-			//Debug.Log($"serializedSO:\n{serializedSO}");
+			m_OriginalSO.m_NullList = null;
+			m_OriginalSO.m_FinalNullList = null;
+			var serializedSO = CD_JSON.Serialize(m_OriginalSO);
+			Debug.Log($"serializedSO:\n{serializedSO}");
 			//m_DeserializedSO = CD_JSON.Deserialize<CD_JSON_ScriptableObject>(serializedSO);
+			Debug.Log("Qué pasó?");
 			//Debug.Log($"m_DeserializedSO: {m_DeserializedSO}");
 
 		}

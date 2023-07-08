@@ -52,8 +52,7 @@ namespace CocodriloDog.CD_JSON {
 			var objJSON = "{\n";
 
 			// Add CD_JSON special fields
-			objJSON += $"\t\"cd_json_type\": \"{obj.GetType().FullName}\"";
-			AddCommaAndNewLine(fieldInfos.Count == 0);
+			objJSON += $"\t\"cd_json_type\": \"{obj.GetType().FullName}\",\n";
 
 			for (var i = 0; i < fieldInfos.Count; i++) {
 
@@ -72,15 +71,7 @@ namespace CocodriloDog.CD_JSON {
 
 				// Format for leaf fields
 				if (IsLeaf(fieldInfos[i].FieldType)) {
-					if(fieldInfos[i].FieldType == typeof(string)) { // Strings have quotation
-						objJSON += $"{namePart}\"{fieldInfos[i].GetValue(obj)}\"";
-					} else if (fieldInfos[i].FieldType == typeof(bool)) {
-						var boolStringValue = (bool)fieldInfos[i].GetValue(obj) ? JSON_True : JSON_False;
-						objJSON += $"{namePart}{boolStringValue}";
-					} else {
-						objJSON += $"{namePart}{fieldInfos[i].GetValue(obj)}";
-					}
-					AddCommaAndNewLine(i == fieldInfos.Count - 1);
+					objJSON += $"{namePart}{SerializeLeafValue(fieldInfos[i].GetValue(obj))}";
 				}
 				// Format for composite fields (arrays, lists and objects with properties)
 				else {
@@ -98,23 +89,18 @@ namespace CocodriloDog.CD_JSON {
 							objJSON += $"{namePart}{Indent(childObjString).TrimStart()}";
 						}
 					}
-					AddCommaAndNewLine(i == fieldInfos.Count - 1);
 				}
-
+				// Add after each object
+				objJSON += ",\n";
 			}
+
+			// Remove the last comma, without removing the last \n
+			objJSON = RemoveLastComma(objJSON);
 
 			//Close the string
 			objJSON += "}";
 
 			return objJSON;
-
-			// Local utility
-			void AddCommaAndNewLine(bool excludeComma) {
-				if (!excludeComma) {
-					objJSON += ",";
-				}
-				objJSON += "\n";
-			}
 
 		}
 
@@ -138,7 +124,6 @@ namespace CocodriloDog.CD_JSON {
 		/// <returns>The JSON representation of the object</returns>
 		public static object Deserialize(Type type, string json) {
 
-			/*
 			object instance;
 			if (typeof(ScriptableObject).IsAssignableFrom(type)){
 				instance = ScriptableObject.CreateInstance(type);
@@ -175,7 +160,7 @@ namespace CocodriloDog.CD_JSON {
 							} else {
 								lineFieldValue = Clean(lineFieldValue);
 							}
-							lineFieldInfo.SetValue(instance, DeserializeValue(lineFieldValue, lineFieldInfo.FieldType));
+							lineFieldInfo.SetValue(instance, DeserializeLeafOrNullValue(lineFieldValue, lineFieldInfo.FieldType));
 							// When there is a field like this: "fieldName": null, it classifies as
 							// JSONLineKind.LeafOrNullField and in that case DeserializeValue() will return null
 						}
@@ -262,7 +247,7 @@ namespace CocodriloDog.CD_JSON {
 								for (var k = 0; k < elementJSONs.Count; k++) {
 									if (elementIsLeaf) {
 										// Leaf object
-										indexedInstance[k] = DeserializeValue(Clean(elementJSONs[k]), arrayOrListType);
+										indexedInstance[k] = DeserializeLeafOrNullValue(Clean(elementJSONs[k]), arrayOrListType);
 									} else {
 										if (Clean(elementJSONs[k]) == "null") {
 											indexedInstance[k] = null;
@@ -323,8 +308,6 @@ namespace CocodriloDog.CD_JSON {
 			}
 
 			return instance;
-			*/
-			return null;
 		}
 
 		#endregion
@@ -403,17 +386,37 @@ namespace CocodriloDog.CD_JSON {
 
 		}
 
-		private static FieldInfo GetFieldInfo(Type type, string fieldName) {
-			var fieldInfo = type.GetField(fieldName, BindingFlags);
-			var baseType = type;
-			while (fieldInfo == null) {
-				baseType = baseType.BaseType;
-				if (baseType == null) {
-					break;
-				}
-				fieldInfo = baseType.GetField(fieldName, BindingFlags);
+		/// <summary>
+		/// Removes the last comma of the string, if any.
+		/// </summary>
+		/// <param name="str"></param>
+		/// <returns></returns>
+		private static string RemoveLastComma(string str) {
+			int lastCommaIndex = str.LastIndexOf(',');
+			if (lastCommaIndex >= 0) {
+				str = str.Substring(0, lastCommaIndex) + str.Substring(lastCommaIndex + 1);
 			}
-			return fieldInfo;
+			return str;
+		}
+
+		/// <summary>
+		/// Serializes a leaf value, according to its type.
+		/// </summary>
+		/// <param name="leafValue"></param>
+		/// <returns></returns>
+		private static string SerializeLeafValue(object leafValue) {
+
+			string valueJSON;
+			if (leafValue is string) {
+				valueJSON = $"\"{EscapeQuotes((string)leafValue)}\"";
+			} else if (leafValue is bool) {
+				valueJSON = (bool)leafValue ? JSON_True : JSON_False;
+			} else {
+				valueJSON = leafValue.ToString();
+			}
+
+			return valueJSON;
+
 		}
 
 		/// <summary>
@@ -435,52 +438,51 @@ namespace CocodriloDog.CD_JSON {
 
 			// Null list or array
 			if (fieldValue == null) {
-				return $"{namePart}{JSON_Null}\n";
+				return $"{namePart}{JSON_Null}";
 			}
 
+			// This flag is used to leave empty brackets [] if the list or array is empty
+			// (avoid the \n between the brackets)
 			bool isEmpty = true;
+			
 			// Add elements
 			foreach (var element in (IEnumerable)fieldValue) {
 				if (element == null) {
-					iEnumerableJSON += $"{Indent(Indent(JSON_Null))},\n";
+					iEnumerableJSON += $"{Indent(Indent(JSON_Null))}";
 				} else {
-					// Create the first new line after the openning bracket
+					// Create the first new line after the openning bracket [
 					if (isEmpty) {
 						isEmpty = false;
 						iEnumerableJSON += "\n";
 					}
 					// Leaf element
 					if (IsLeaf(element.GetType())) {
-						if (element.GetType() == typeof(string)) { // Strings have quotation
-							iEnumerableJSON += $"\t\t\"{element}\",\n";
-						} else {
-							iEnumerableJSON += $"\t\t{element},\n";
-						}
+						iEnumerableJSON += $"\t\t{SerializeLeafValue(element)}";
 					}
 					// Composite element
 					else {
 						// Format for arrays and lists
 						if (IsArrayOrList(element.GetType())) {
-							// TODO: Array of array
-							//objJSON += SerializeIEnumerable(obj, fieldInfos[i]);
+							// Unity does not serialize arrays of arrays, so this is not needed for now.
 						}
 						// Format for non-list composite (Object with properties). Apply recursion
 						else {
-							var childObjString = $"{Serialize(element)}";
-							iEnumerableJSON += $"{Indent(Indent(childObjString))},\n";
+							iEnumerableJSON += $"{Indent(Indent(Serialize(element)))}";
 						}
 					}
 				}
+				// Add after each element
+				iEnumerableJSON += ",\n";
 			}
-			
-			// Remove the last '\n' and ','
-			iEnumerableJSON = iEnumerableJSON.TrimEnd().TrimEnd(',');
+
+			// Remove the last comma, without removing the last \n
+			iEnumerableJSON = RemoveLastComma(iEnumerableJSON);
 
 			// Close list
 			if (isEmpty) {
 				iEnumerableJSON += $"]"; // Closes the array or list in the same line
 			} else {
-				iEnumerableJSON += $"\n\t]"; // The first '\n' is replacing the previously removed '\n'
+				iEnumerableJSON += $"\t]"; // 
 			}
 			return iEnumerableJSON;
 
@@ -499,6 +501,14 @@ namespace CocodriloDog.CD_JSON {
 		/// <param name="fieldInfo"></param>
 		/// <returns></returns>
 		private static string NamePart(FieldInfo fieldInfo) => $"\t\"{fieldInfo.Name}\": ";
+
+		/// <summary>
+		/// If there are any quotes in the text, escape them. For example <c>Hello, they call me "Monkey"</c>
+		/// to <c>Hello, they call me \"Monkey\"</c> for compliancy with a valid JSON format.
+		/// </summary>
+		/// <param name="str"></param>
+		/// <returns></returns>
+		private static string EscapeQuotes(string str) => str.Replace("\"", "\\\"");
 
 		/// <summary>
 		/// Indents the provided JSON by one tab.
@@ -521,6 +531,27 @@ namespace CocodriloDog.CD_JSON {
 
 
 		#region Private Static Methods - Deserialize
+
+		/// <summary>
+		/// Gets the <see cref="FieldInfo"/> of a field named <paramref name="fieldName"/>
+		/// in the <paramref name="type"/> and searches in the base types until it is found
+		/// or <c>null</c> if none is found.
+		/// </summary>
+		/// <param name="type">The type</param>
+		/// <param name="fieldName">The field name</param>
+		/// <returns></returns>
+		private static FieldInfo GetFieldInfo(Type type, string fieldName) {
+			var fieldInfo = type.GetField(fieldName, BindingFlags);
+			var baseType = type;
+			while (fieldInfo == null) {
+				baseType = baseType.BaseType;
+				if (baseType == null) {
+					break;
+				}
+				fieldInfo = baseType.GetField(fieldName, BindingFlags);
+			}
+			return fieldInfo;
+		}
 
 		/// <summary>
 		/// Removes  '\n', '\r', '\t', ' ', '"', ':', ',' from the beginning and end of the string.
@@ -584,7 +615,7 @@ namespace CocodriloDog.CD_JSON {
 		/// <param name="stringValue">The JSON string of the value</param>
 		/// <param name="type">The type of the object to be returned</param>
 		/// <returns>The deserialized value</returns>
-		private static object DeserializeValue(string stringValue, Type type) {
+		private static object DeserializeLeafOrNullValue(string stringValue, Type type) {
 			if (type == typeof(string)) {
 				return stringValue;
 			}

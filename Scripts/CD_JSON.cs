@@ -35,7 +35,7 @@ namespace CocodriloDog.CD_JSON {
 		/// <param name="json">The JSON representation of the object</param>
 		/// <returns>An instance of type <typeparamref name="T"/></returns>
 		public static T Deserialize<T>(string json) where T : class{
-			return JsonConvert.DeserializeObject<T>(json);
+			return (T)Deserialize(typeof(T), json);
 		}
 
 		/// <summary>
@@ -46,7 +46,7 @@ namespace CocodriloDog.CD_JSON {
 		/// <param name="json"></param>
 		/// <returns>The JSON representation of the object</returns>
 		public static object Deserialize(Type type, string json) {
-			return null;
+			return JsonConvert.DeserializeObject(json, type);
 		}
 
 		#endregion

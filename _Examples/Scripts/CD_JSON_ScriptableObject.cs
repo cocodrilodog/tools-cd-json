@@ -1,4 +1,5 @@
 namespace CocodriloDog.CD_JSON.Examples {
+
 	using Newtonsoft.Json;
 	using System.Collections;
 	using System.Collections.Generic;
@@ -10,7 +11,6 @@ namespace CocodriloDog.CD_JSON.Examples {
 
 
 		#region Private Fields
-
 
 		[SerializeField]
 		private CD_JSON_Example.Class1 m_Class1;

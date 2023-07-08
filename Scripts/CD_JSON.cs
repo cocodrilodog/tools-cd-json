@@ -49,10 +49,10 @@ namespace CocodriloDog.CD_JSON {
 			fieldInfos = new List<FieldInfo>(fieldsDictionary.Values);
 
 			// Open the string
-			var objJSON = "{\n";
+			var objJSON = "{";
 
 			// Add CD_JSON special fields
-			objJSON += $"\"cd_json_type\": \"{obj.GetType().FullName}\",\n";
+			objJSON += $"\"cd_json_type\": \"{obj.GetType().FullName}\",";
 
 			for (var i = 0; i < fieldInfos.Count; i++) {
 
@@ -91,10 +91,10 @@ namespace CocodriloDog.CD_JSON {
 					}
 				}
 				// Add after each object
-				objJSON += ",\n";
+				objJSON += ",";
 			}
 
-			// Remove the last comma, without removing the last \n
+			// Remove the last comma
 			objJSON = RemoveLastComma(objJSON);
 
 			//Close the string
@@ -443,21 +443,12 @@ namespace CocodriloDog.CD_JSON {
 			if (fieldValue == null) {
 				return $"{namePart}{JSON_Null}";
 			}
-
-			// This flag is used to leave empty brackets [] if the list or array is empty
-			// (avoid the \n between the brackets)
-			bool isEmpty = true;
 			
 			// Add elements
 			foreach (var element in (IEnumerable)fieldValue) {
 				if (element == null) {
 					iEnumerableJSON += JSON_Null;
 				} else {
-					// Create the first new line after the openning bracket [
-					if (isEmpty) {
-						isEmpty = false;
-						iEnumerableJSON += "\n";
-					}
 					// Leaf element
 					if (IsLeaf(element.GetType())) {
 						iEnumerableJSON += SerializeLeafValue(element);
@@ -475,10 +466,10 @@ namespace CocodriloDog.CD_JSON {
 					}
 				}
 				// Add after each element
-				iEnumerableJSON += ",\n";
+				iEnumerableJSON += ",";
 			}
 
-			// Remove the last comma, without removing the last \n
+			// Remove the last comma
 			iEnumerableJSON = RemoveLastComma(iEnumerableJSON);
 
 			// Close list

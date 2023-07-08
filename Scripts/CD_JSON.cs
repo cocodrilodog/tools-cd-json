@@ -52,7 +52,7 @@ namespace CocodriloDog.CD_JSON {
 			var objJSON = "{\n";
 
 			// Add CD_JSON special fields
-			objJSON += $"\t\"cd_json_type\": \"{obj.GetType().FullName}\",\n";
+			objJSON += $"\"cd_json_type\": \"{obj.GetType().FullName}\",\n";
 
 			for (var i = 0; i < fieldInfos.Count; i++) {
 
@@ -81,12 +81,12 @@ namespace CocodriloDog.CD_JSON {
 					}
 					// Format for non-list composite (Object with properties). Apply recursion
 					else {
-						var childObjString = $"{Serialize(fieldInfos[i].GetValue(obj))}";
+						var childObjString = Serialize(fieldInfos[i].GetValue(obj));
 						if (childObjString == JSON_Null) {
 							objJSON += $"{namePart}{childObjString}";
 						} else {
 							// TrimStart() removes the indent from the first curly brace
-							objJSON += $"{namePart}{Indent(childObjString).TrimStart()}";
+							objJSON += $"{namePart}{childObjString}";
 						}
 					}
 				}
@@ -124,6 +124,7 @@ namespace CocodriloDog.CD_JSON {
 		/// <returns>The JSON representation of the object</returns>
 		public static object Deserialize(Type type, string json) {
 
+			/*
 			object instance;
 			if (typeof(ScriptableObject).IsAssignableFrom(type)){
 				instance = ScriptableObject.CreateInstance(type);
@@ -308,6 +309,8 @@ namespace CocodriloDog.CD_JSON {
 			}
 
 			return instance;
+			*/
+			return null;
 		}
 
 		#endregion
@@ -448,7 +451,7 @@ namespace CocodriloDog.CD_JSON {
 			// Add elements
 			foreach (var element in (IEnumerable)fieldValue) {
 				if (element == null) {
-					iEnumerableJSON += $"{Indent(Indent(JSON_Null))}";
+					iEnumerableJSON += JSON_Null;
 				} else {
 					// Create the first new line after the openning bracket [
 					if (isEmpty) {
@@ -457,7 +460,7 @@ namespace CocodriloDog.CD_JSON {
 					}
 					// Leaf element
 					if (IsLeaf(element.GetType())) {
-						iEnumerableJSON += $"\t\t{SerializeLeafValue(element)}";
+						iEnumerableJSON += SerializeLeafValue(element);
 					}
 					// Composite element
 					else {
@@ -467,7 +470,7 @@ namespace CocodriloDog.CD_JSON {
 						}
 						// Format for non-list composite (Object with properties). Apply recursion
 						else {
-							iEnumerableJSON += $"{Indent(Indent(Serialize(element)))}";
+							iEnumerableJSON += Serialize(element);
 						}
 					}
 				}
@@ -479,11 +482,8 @@ namespace CocodriloDog.CD_JSON {
 			iEnumerableJSON = RemoveLastComma(iEnumerableJSON);
 
 			// Close list
-			if (isEmpty) {
-				iEnumerableJSON += $"]"; // Closes the array or list in the same line
-			} else {
-				iEnumerableJSON += $"\t]"; // 
-			}
+			iEnumerableJSON += $"]";
+
 			return iEnumerableJSON;
 
 		}
@@ -500,7 +500,7 @@ namespace CocodriloDog.CD_JSON {
 		/// </summary>
 		/// <param name="fieldInfo"></param>
 		/// <returns></returns>
-		private static string NamePart(FieldInfo fieldInfo) => $"\t\"{fieldInfo.Name}\": ";
+		private static string NamePart(FieldInfo fieldInfo) => $"\"{fieldInfo.Name}\": ";
 
 		/// <summary>
 		/// If there are any quotes in the text, escape them. For example <c>Hello, they call me "Monkey"</c>

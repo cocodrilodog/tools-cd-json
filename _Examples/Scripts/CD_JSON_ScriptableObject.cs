@@ -1,14 +1,16 @@
 namespace CocodriloDog.CD_JSON.Examples {
-
+	using Newtonsoft.Json;
 	using System.Collections;
 	using System.Collections.Generic;
 	using UnityEngine;
 
+	[JsonObject(memberSerialization: MemberSerialization.Fields)]
 	[CreateAssetMenu(menuName ="Cocodrilo Dog/CD JSON/Examples/CD JSON Scriptable Object")]
 	public class CD_JSON_ScriptableObject : ScriptableObject {
 
 
 		#region Private Fields
+
 
 		[SerializeField]
 		private CD_JSON_Example.Class1 m_Class1;

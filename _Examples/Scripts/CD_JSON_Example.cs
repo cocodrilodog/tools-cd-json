@@ -1,6 +1,6 @@
 namespace CocodriloDog.CD_JSON.Examples {
-	
-    using System;
+	using Newtonsoft.Json;
+	using System;
 	using System.Collections;
     using System.Collections.Generic;
     using UnityEngine;
@@ -19,11 +19,10 @@ namespace CocodriloDog.CD_JSON.Examples {
 
 			m_OriginalSO.m_NullList = null;
 			m_OriginalSO.m_FinalNullList = null;
-			var serializedSO = CD_JSON.Serialize(m_OriginalSO);
+			var serializedSO = CD_JSON.Serialize(m_OriginalSO, true);
 			Debug.Log($"serializedSO:\n{serializedSO}");
-			//m_DeserializedSO = CD_JSON.Deserialize<CD_JSON_ScriptableObject>(serializedSO);
-			Debug.Log("Qué pasó?");
-			//Debug.Log($"m_DeserializedSO: {m_DeserializedSO}");
+			m_DeserializedSO = CD_JSON.Deserialize<CD_JSON_ScriptableObject>(serializedSO);
+			Debug.Log($"m_DeserializedSO: {m_DeserializedSO}");
 
 		}
 
@@ -49,7 +48,7 @@ namespace CocodriloDog.CD_JSON.Examples {
 		#region Private Fields
 
 		[SerializeField]
-		private Class1 m_Class1;
+		public Class1 m_Class1;
 
 		[SerializeField]
 		private CD_JSON_ScriptableObject m_OriginalSO;
@@ -59,7 +58,7 @@ namespace CocodriloDog.CD_JSON.Examples {
 
 		#endregion
 
-
+		[JsonObject(memberSerialization:MemberSerialization.Fields)]
 		[Serializable]
 		public class Class1 {
 

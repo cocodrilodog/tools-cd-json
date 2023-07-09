@@ -1,7 +1,6 @@
 namespace CocodriloDog.CD_JSON.Examples {
-
-	using Newtonsoft.Json;
-	using System;
+	
+    using System;
 	using System.Collections;
     using System.Collections.Generic;
     using UnityEngine;
@@ -13,35 +12,18 @@ namespace CocodriloDog.CD_JSON.Examples {
 
 		private void Start() {
 			
-			// Serialize and deserialize an object class
-			var serializedClass1 = CD_JSON.Serialize(m_Class1, true);
-			Debug.Log($"serializedClass1:\n{serializedClass1}");
-			var deserializedClass1 = CD_JSON.Deserialize<Class1>(serializedClass1);
-			Debug.Log($"deserializedClass1:{deserializedClass1}");
+			var serializedClass1 = CD_JSON.Serialize(m_Class1);
+			//Debug.Log($"serializedClass1:\n{serializedClass1}");
+			//var deserializedClass1 = CD_JSON.Deserialize<Class1>(serializedClass1);
+			//Debug.Log($"deserializedClass1:{deserializedClass1}");
 
-			// Serialize and deserialize a ScriptableObject class
 			m_OriginalSO.m_NullList = null;
 			m_OriginalSO.m_FinalNullList = null;
 			var serializedSO = CD_JSON.Serialize(m_OriginalSO, true);
 			Debug.Log($"serializedSO:\n{serializedSO}");
+
 			m_DeserializedSO = CD_JSON.Deserialize<CD_JSON_ScriptableObject>(serializedSO);
 			Debug.Log($"m_DeserializedSO: {m_DeserializedSO}");
-
-			// Deserialize a partial object class
-			string serializedPartialClass1 = "{\"SomeString1\":\"Partial Class1 test\"}";
-			var partialClass1 = CD_JSON.Deserialize<Class1>(serializedPartialClass1);
-			Debug.Log($"partialClass1.SomeString1: {partialClass1.SomeString1}");
-
-
-			// Deserialize an object with a unexpected field class
-			string serializedUnexpectedClass1 = 
-				"{" +
-				"\"SomeString1\":\"Unexpected Class1 test\"," +
-				"\"UnexpectedField\":\"Unexpected value\"" +
-				"}";
-
-			var unexpectedClass1 = CD_JSON.Deserialize<Class1>(serializedUnexpectedClass1);
-			Debug.Log($"unexpectedClass1.SomeString1: {unexpectedClass1.SomeString1}");
 
 		}
 
@@ -67,7 +49,7 @@ namespace CocodriloDog.CD_JSON.Examples {
 		#region Private Fields
 
 		[SerializeField]
-		public Class1 m_Class1;
+		private Class1 m_Class1;
 
 		[SerializeField]
 		private CD_JSON_ScriptableObject m_OriginalSO;
@@ -77,7 +59,7 @@ namespace CocodriloDog.CD_JSON.Examples {
 
 		#endregion
 
-		[JsonObject(memberSerialization:MemberSerialization.Fields)]
+
 		[Serializable]
 		public class Class1 {
 

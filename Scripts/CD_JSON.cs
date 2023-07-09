@@ -1,10 +1,13 @@
 namespace CocodriloDog.CD_JSON {
 
 	using Newtonsoft.Json;
+	using Newtonsoft.Json.Converters;
 	using Newtonsoft.Json.Linq;
+	using Newtonsoft.Json.Serialization;
 	using System;
 	using System.Collections;
 	using System.Collections.Generic;
+	using System.Linq;
 	using System.Reflection;
 	using UnityEngine;
 
@@ -35,82 +38,79 @@ namespace CocodriloDog.CD_JSON {
 		/// <param name="obj">The object</param>
 		/// <returns>The JSON string representation</returns>
 		public static string Serialize(object obj, bool prettyFormat = false) {
-			
 
-			return JsonConvert.SerializeObject(obj, prettyFormat ? Formatting.Indented : Formatting.None);
+			if (obj == null) {
+				return JSON_Null;
+			}
 
-			//if (obj == null) {
-			//	return JSON_Null;
-			//}
+			// Get the fields of the root object
+			var fieldInfos = new List<FieldInfo>(GetFieldInfos(obj.GetType()));
 
-			//// Get the fields of the root object
-			//var fieldInfos = new List<FieldInfo>(GetFieldInfos(obj.GetType()));
+			// Remove Duplicates that result from inherited fields
+			var fieldsDictionary = new Dictionary<string, FieldInfo>();
+			foreach (var fieldInfo in fieldInfos) {
+				fieldsDictionary[fieldInfo.Name] = fieldInfo;
+			}
+			fieldInfos = new List<FieldInfo>(fieldsDictionary.Values);
 
-			//// Remove Duplicates that result from inherited fields
-			//var fieldsDictionary = new Dictionary<string, FieldInfo>();
-			//foreach (var fieldInfo in fieldInfos) {
-			//	fieldsDictionary[fieldInfo.Name] = fieldInfo;
-			//}
-			//fieldInfos = new List<FieldInfo>(fieldsDictionary.Values);
+			// Open the string
+			var objJSON = "{";
 
-			//// Open the string
-			//var objJSON = "{";
+			// Add CD_JSON special fields
+			objJSON += $"\"cd_json_type\": \"{obj.GetType().FullName}\",";
 
-			//// Add CD_JSON special fields
-			//objJSON += $"\"cd_json_type\": \"{obj.GetType().FullName}\",";
+			for (var i = 0; i < fieldInfos.Count; i++) {
 
-			//for (var i = 0; i < fieldInfos.Count; i++) {
+				// Bypass Unity internal fields
+				var isUnityInternal =
+					fieldInfos[i].Name == "m_CachedPtr" ||
+					fieldInfos[i].Name == "m_InstanceID" ||
+					fieldInfos[i].Name == "m_UnityRuntimeErrorString";
 
-			//	// Bypass Unity internal fields
-			//	var isUnityInternal =
-			//		fieldInfos[i].Name == "m_CachedPtr" ||
-			//		fieldInfos[i].Name == "m_InstanceID" ||
-			//		fieldInfos[i].Name == "m_UnityRuntimeErrorString";
+				if (isUnityInternal) {
+					break;
+				}
 
-			//	if (isUnityInternal) {
-			//		break;
-			//	}
+				// This is the part that contains the name of the field
+				var namePart = NamePart(fieldInfos[i]);
 
-			//	// This is the part that contains the name of the field
-			//	var namePart = NamePart(fieldInfos[i]);
+				// Format for leaf fields
+				if (IsLeaf(fieldInfos[i].FieldType)) {
+					objJSON += $"{namePart}{SerializeLeafValue(fieldInfos[i].GetValue(obj))}";
+				}
+				// Format for composite fields (arrays, lists and objects with properties)
+				else {
+					// Format for arrays and lists
+					if (IsArrayOrList(fieldInfos[i].FieldType)) {
+						objJSON += SerializeIEnumerable(obj, fieldInfos[i]);
+					}
+					// Format for non-list composite (Object with properties). Apply recursion
+					else {
+						var childObjString = Serialize(fieldInfos[i].GetValue(obj));
+						if (childObjString == JSON_Null) {
+							objJSON += $"{namePart}{childObjString}";
+						} else {
+							// TrimStart() removes the indent from the first curly brace
+							objJSON += $"{namePart}{childObjString}";
+						}
+					}
+				}
+				// Add after each object
+				objJSON += ",";
+			}
 
-			//	// Format for leaf fields
-			//	if (IsLeaf(fieldInfos[i].FieldType)) {
-			//		objJSON += $"{namePart}{SerializeLeafValue(fieldInfos[i].GetValue(obj))}";
-			//	}
-			//	// Format for composite fields (arrays, lists and objects with properties)
-			//	else {
-			//		// Format for arrays and lists
-			//		if (IsArrayOrList(fieldInfos[i].FieldType)) {
-			//			objJSON += SerializeIEnumerable(obj, fieldInfos[i]);
-			//		}
-			//		// Format for non-list composite (Object with properties). Apply recursion
-			//		else {
-			//			var childObjString = Serialize(fieldInfos[i].GetValue(obj));
-			//			if (childObjString == JSON_Null) {
-			//				objJSON += $"{namePart}{childObjString}";
-			//			} else {
-			//				// TrimStart() removes the indent from the first curly brace
-			//				objJSON += $"{namePart}{childObjString}";
-			//			}
-			//		}
-			//	}
-			//	// Add after each object
-			//	objJSON += ",";
-			//}
+			// Remove the last comma
+			objJSON = RemoveLastComma(objJSON);
 
-			//// Remove the last comma
-			//objJSON = RemoveLastComma(objJSON);
+			//Close the string
+			objJSON += "}";
 
-			////Close the string
-			//objJSON += "}";
+			if (prettyFormat) {
+				JToken parsedJson = JToken.Parse(objJSON);
+				objJSON = parsedJson.ToString(Formatting.Indented);
+			}
 
-			//if (prettyFormat) {
-			//	JToken parsedJson = JToken.Parse(objJSON);
-			//	objJSON = parsedJson.ToString(Formatting.Indented);
-			//}
-
-			//return objJSON;
+			return objJSON;
 
 		}
 
@@ -133,198 +133,218 @@ namespace CocodriloDog.CD_JSON {
 		/// <param name="json"></param>
 		/// <returns>The JSON representation of the object</returns>
 		public static object Deserialize(Type type, string json) {
-			//JObject obj = JObject.Parse(json);
 
-			//return obj;
-
-			return JsonConvert.DeserializeObject(json, type);
-
-			/*
-			object instance;
-			if (typeof(ScriptableObject).IsAssignableFrom(type)){
-				instance = ScriptableObject.CreateInstance(type);
+			object root;
+			if (typeof(ScriptableObject).IsAssignableFrom(type)) {
+				root = ScriptableObject.CreateInstance(type);
 			} else {
-				instance = Activator.CreateInstance(type);
+				root = Activator.CreateInstance(type);
 			}
 
-			Stack<ParentCompositeRef> parentRefStack = null;
-			var jsonLines = json.Split('\n');
+			JObject obj = JObject.Parse(json);
 
-			for (var i = 0; i < jsonLines.Length; i++) {
+			TraverseJToken(obj);
 
-				var lineKind = GetJSONLineKind(jsonLines[i]);
+			void TraverseJToken(JToken token) {
+				if (token.Type == JTokenType.Object) {
+					foreach (JProperty property in token.Children<JProperty>()) {
+						Debug.Log($"Property Name: {property.Name}, Value: {property.Value}");
+						if (property.Name == "cd_json_type") {
+							var objType = GetTypeFromJSONLine(property.Value.ToString());
+							Debug.Log($"	OBJECT TYPE: {objType}");
+						}
+						TraverseJToken(property.Value);
+					}
+				} else if (token.Type == JTokenType.Array) {
+					foreach (JToken arrayItem in token.Children()) {
+						TraverseJToken(arrayItem);
+					}
+				}
+				// Handle other token types if necessary
+			}
 
-				switch (lineKind) {
 
-					case JSONLineKind.LeafOrNullField: {
-							// Limiting the split to 2, avoids error when parsing strings with ':'
-							// For example: "m_SleepTime": "11:11 am"
-							var line = jsonLines[i].Split(':', 2);
-							var lineFieldName = Clean(line[0]);
-							if(lineFieldName == "cd_json_type") {
-								break;
-							}
-							var lineFieldValue = line[1];
-							var lineFieldInfo = GetFieldInfo(instance.GetType(), lineFieldName);
-							// If the json has an outdated property, this will ignore it and avoid an error
-							// TODO: Apply this logic to the other JSONLineKinds
-							if(lineFieldInfo == null) {
-								break;
-							}
-							if(lineFieldInfo.FieldType == typeof(string)) {
-								lineFieldValue = CleanStringValue(lineFieldValue);
+			return root;
+
+			/*
+Stack<ParentCompositeRef> parentRefStack = null;
+var jsonLines = json.Split('\n');
+
+for (var i = 0; i < jsonLines.Length; i++) {
+
+	var lineKind = GetJSONLineKind(jsonLines[i]);
+
+	switch (lineKind) {
+
+		case JSONLineKind.LeafOrNullField: {
+				// Limiting the split to 2, avoids error when parsing strings with ':'
+				// For example: "m_SleepTime": "11:11 am"
+				var line = jsonLines[i].Split(':', 2);
+				var lineFieldName = Clean(line[0]);
+				if(lineFieldName == "cd_json_type") {
+					break;
+				}
+				var lineFieldValue = line[1];
+				var lineFieldInfo = GetFieldInfo(instance.GetType(), lineFieldName);
+				// If the json has an outdated property, this will ignore it and avoid an error
+				// TODO: Apply this logic to the other JSONLineKinds
+				if(lineFieldInfo == null) {
+					break;
+				}
+				if(lineFieldInfo.FieldType == typeof(string)) {
+					lineFieldValue = CleanStringValue(lineFieldValue);
+				} else {
+					lineFieldValue = Clean(lineFieldValue);
+				}
+				lineFieldInfo.SetValue(instance, DeserializeLeafOrNullValue(lineFieldValue, lineFieldInfo.FieldType));
+				// When there is a field like this: "fieldName": null, it classifies as
+				// JSONLineKind.LeafOrNullField and in that case DeserializeValue() will return null
+			}
+			break;
+
+		case JSONLineKind.CompositeFieldName: {
+
+				// Get the info of this field
+				var lineFieldName = Clean(jsonLines[i]);
+				var lineFieldInfo = GetFieldInfo(instance.GetType(), lineFieldName);
+
+				// Temporarily store the composite field instance to restore upon closing brace
+				parentRefStack ??= new Stack<ParentCompositeRef>();
+				parentRefStack.Push(new ParentCompositeRef(instance, lineFieldName));
+
+				if(lineFieldInfo == null) {
+					// TODO: At this point, if an outdated composite field is found, we must ignore it, 
+					// but we must jump up to a point where the next property starts
+				}
+
+				if (IsArrayOrList(lineFieldInfo.FieldType)) {
+
+					// First isolate and store JSON text that comprises the array or list
+					//var arrayJSON = "";
+
+					// Parse all lines between '[' and ']' which comprises the array or list json
+					i++; // Skip the '[' character
+					var nextLine = jsonLines[++i];
+					var childArrayOrList = 0;
+
+					// Create an array of strings with the serialized elements
+					List<String> elementJSONs = new List<string>();
+
+					while (GetJSONLineKind(nextLine) != JSONLineKind.SquareClose || childArrayOrList > 0) {
+						// If a child array or list is found, this prevents the parsing to break
+						// before the end of the main array or list
+						if (GetJSONLineKind(nextLine) == JSONLineKind.SquareOpen) {
+							childArrayOrList++;
+						} else if (GetJSONLineKind(nextLine) == JSONLineKind.SquareClose) {
+							childArrayOrList--;
+						}
+						// If there are no elements yet, we create the first one								
+						if (elementJSONs.Count == 0) {
+							elementJSONs.Add("");
+						}
+						// We add the next lines to the last element
+						elementJSONs[elementJSONs.Count - 1] += nextLine + "\n";
+						// Until we identify an end of element and then add a new element, but
+						// we make sure that the end of element is not part of a child array or list
+						if ((IsEndOfElementJSONLine(nextLine) && childArrayOrList == 0)) {
+							elementJSONs.Add("");
+						}
+						nextLine = jsonLines[++i];
+					}
+					i--; // Go back to the ']' character
+
+					// Create either the array or list
+					Type arrayOrListType;
+					if (lineFieldInfo.FieldType.IsArray) {
+						// Create the array
+						arrayOrListType = lineFieldInfo.FieldType.GetElementType();
+						instance = Array.CreateInstance(arrayOrListType, elementJSONs.Count);
+					} else {
+						// Create the list
+						arrayOrListType = lineFieldInfo.FieldType.GenericTypeArguments[0];
+						var genericType = typeof(List<>).MakeGenericType(arrayOrListType);
+						instance = Activator.CreateInstance(genericType);
+						// Populate it with default value so that final values can be assigned via indexers []
+						var listInstance = ((IList)instance);
+						for (int j = 0; j < elementJSONs.Count; j++) {
+							if (arrayOrListType.IsValueType) {
+								listInstance.Add(Activator.CreateInstance(arrayOrListType));
 							} else {
-								lineFieldValue = Clean(lineFieldValue);
+								listInstance.Add(null);
 							}
-							lineFieldInfo.SetValue(instance, DeserializeLeafOrNullValue(lineFieldValue, lineFieldInfo.FieldType));
-							// When there is a field like this: "fieldName": null, it classifies as
-							// JSONLineKind.LeafOrNullField and in that case DeserializeValue() will return null
 						}
-						break;
+					}
 
-					case JSONLineKind.CompositeFieldName: {
-
-							// Get the info of this field
-							var lineFieldName = Clean(jsonLines[i]);
-							var lineFieldInfo = GetFieldInfo(instance.GetType(), lineFieldName);
-
-							// Temporarily store the composite field instance to restore upon closing brace
-							parentRefStack ??= new Stack<ParentCompositeRef>();
-							parentRefStack.Push(new ParentCompositeRef(instance, lineFieldName));
-
-							if(lineFieldInfo == null) {
-								// TODO: At this point, if an outdated composite field is found, we must ignore it, 
-								// but we must jump up to a point where the next property starts
-							}
-
-							if (IsArrayOrList(lineFieldInfo.FieldType)) {
-
-								// First isolate and store JSON text that comprises the array or list
-								//var arrayJSON = "";
-
-								// Parse all lines between '[' and ']' which comprises the array or list json
-								i++; // Skip the '[' character
-								var nextLine = jsonLines[++i];
-								var childArrayOrList = 0;
-
-								// Create an array of strings with the serialized elements
-								List<String> elementJSONs = new List<string>();
-
-								while (GetJSONLineKind(nextLine) != JSONLineKind.SquareClose || childArrayOrList > 0) {
-									// If a child array or list is found, this prevents the parsing to break
-									// before the end of the main array or list
-									if (GetJSONLineKind(nextLine) == JSONLineKind.SquareOpen) {
-										childArrayOrList++;
-									} else if (GetJSONLineKind(nextLine) == JSONLineKind.SquareClose) {
-										childArrayOrList--;
-									}
-									// If there are no elements yet, we create the first one								
-									if (elementJSONs.Count == 0) {
-										elementJSONs.Add("");
-									}
-									// We add the next lines to the last element
-									elementJSONs[elementJSONs.Count - 1] += nextLine + "\n";
-									// Until we identify an end of element and then add a new element, but
-									// we make sure that the end of element is not part of a child array or list
-									if ((IsEndOfElementJSONLine(nextLine) && childArrayOrList == 0)) {
-										elementJSONs.Add("");
-									}
-									nextLine = jsonLines[++i];
-								}
-								i--; // Go back to the ']' character
-
-								// Create either the array or list
-								Type arrayOrListType;
-								if (lineFieldInfo.FieldType.IsArray) {
-									// Create the array
-									arrayOrListType = lineFieldInfo.FieldType.GetElementType();
-									instance = Array.CreateInstance(arrayOrListType, elementJSONs.Count);
-								} else {
-									// Create the list
-									arrayOrListType = lineFieldInfo.FieldType.GenericTypeArguments[0];
-									var genericType = typeof(List<>).MakeGenericType(arrayOrListType);
-									instance = Activator.CreateInstance(genericType);
-									// Populate it with default value so that final values can be assigned via indexers []
-									var listInstance = ((IList)instance);
-									for (int j = 0; j < elementJSONs.Count; j++) {
-										if (arrayOrListType.IsValueType) {
-											listInstance.Add(Activator.CreateInstance(arrayOrListType));
-										} else {
-											listInstance.Add(null);
-										}
-									}
-								}
-
-								// Set the values to the array or list
-								// Check if element is leaf
-								var elementIsLeaf = IsLeaf(arrayOrListType);
-								// Make this cast to use the indexers []
-								var indexedInstance = (IList)instance;
-								for (var k = 0; k < elementJSONs.Count; k++) {
-									if (elementIsLeaf) {
-										// Leaf object
-										indexedInstance[k] = DeserializeLeafOrNullValue(Clean(elementJSONs[k]), arrayOrListType);
-									} else {
-										if (Clean(elementJSONs[k]) == "null") {
-											indexedInstance[k] = null;
-										} else {
-											// Composite object
-											//
-											// After each ',', there is a '\n' so we remove it from the beginning of the
-											// following element, starting at the second element
-											elementJSONs[k] = elementJSONs[k].TrimStart('\n');
-											// Get the element type from the "cd_json_type" field
-											var elementType = GetTypeFromJSONLine(elementJSONs[k].Split('\n')[1]);
-											// Recursion
-											indexedInstance[k] = Deserialize(elementType, elementJSONs[k]);
-										}
-									}
-								}
-
+					// Set the values to the array or list
+					// Check if element is leaf
+					var elementIsLeaf = IsLeaf(arrayOrListType);
+					// Make this cast to use the indexers []
+					var indexedInstance = (IList)instance;
+					for (var k = 0; k < elementJSONs.Count; k++) {
+						if (elementIsLeaf) {
+							// Leaf object
+							indexedInstance[k] = DeserializeLeafOrNullValue(Clean(elementJSONs[k]), arrayOrListType);
+						} else {
+							if (Clean(elementJSONs[k]) == "null") {
+								indexedInstance[k] = null;
 							} else {
-								// Temporarily replace the instance to populate
-								// This will make the following "fieldName" : value lines to be parsed as
-								// fields that belong to this instance, instead of the composite one
-								if (i < jsonLines.Length - 1 && Clean(jsonLines[i + 1]) == "null") {
-									instance = null;
-								} else {
-									// Get the object type from the "cd_json_type" field
-									var objType = GetTypeFromJSONLine(jsonLines[i + 2]);
-									if(objType == null) {
-										Debug.Log($"NULL TYPE: {jsonLines[i + 2]}");
-									}
-									if (typeof(ScriptableObject).IsAssignableFrom(objType)) {
-										instance = ScriptableObject.CreateInstance(objType);
-									} else {
-										instance = Activator.CreateInstance(objType);
-									}
-								}
-							}
-
-						}
-						break;
-
-					case JSONLineKind.CurlyClose:
-					case JSONLineKind.SquareClose: {
-							if (parentRefStack != null && parentRefStack.Count > 0) {
-								// Get the parent reference
-								var parentRef = parentRefStack.Pop();
-								// Get the field of the children that belongs to the composites
-								var child_fieldInfo = GetFieldInfo(parentRef.Instance.GetType(), parentRef.ChildFieldName);
-								// Assign the child instance to the composite instance
-								child_fieldInfo.SetValue(parentRef.Instance, instance);
-								// Give control back to the composite instance
-								instance = parentRef.Instance;
+								// Composite object
+								//
+								// After each ',', there is a '\n' so we remove it from the beginning of the
+								// following element, starting at the second element
+								elementJSONs[k] = elementJSONs[k].TrimStart('\n');
+								// Get the element type from the "cd_json_type" field
+								var elementType = GetTypeFromJSONLine(elementJSONs[k].Split('\n')[1]);
+								// Recursion
+								indexedInstance[k] = Deserialize(elementType, elementJSONs[k]);
 							}
 						}
-						break;
+					}
 
+				} else {
+					// Temporarily replace the instance to populate
+					// This will make the following "fieldName" : value lines to be parsed as
+					// fields that belong to this instance, instead of the composite one
+					if (i < jsonLines.Length - 1 && Clean(jsonLines[i + 1]) == "null") {
+						instance = null;
+					} else {
+						// Get the object type from the "cd_json_type" field
+						var objType = GetTypeFromJSONLine(jsonLines[i + 2]);
+						if(objType == null) {
+							Debug.Log($"NULL TYPE: {jsonLines[i + 2]}");
+						}
+						if (typeof(ScriptableObject).IsAssignableFrom(objType)) {
+							instance = ScriptableObject.CreateInstance(objType);
+						} else {
+							instance = Activator.CreateInstance(objType);
+						}
+					}
 				}
 
 			}
+			break;
 
-			return instance;
-			*/
+		case JSONLineKind.CurlyClose:
+		case JSONLineKind.SquareClose: {
+				if (parentRefStack != null && parentRefStack.Count > 0) {
+					// Get the parent reference
+					var parentRef = parentRefStack.Pop();
+					// Get the field of the children that belongs to the composites
+					var child_fieldInfo = GetFieldInfo(parentRef.Instance.GetType(), parentRef.ChildFieldName);
+					// Assign the child instance to the composite instance
+					child_fieldInfo.SetValue(parentRef.Instance, instance);
+					// Give control back to the composite instance
+					instance = parentRef.Instance;
+				}
+			}
+			break;
+
+	}
+
+}
+
+return instance;
+*/
 			return null;
 		}
 
@@ -645,16 +665,16 @@ namespace CocodriloDog.CD_JSON {
 		/// <summary>
 		/// Gets a type from a field like this one: "cd_json_type":"TypeFullName".
 		/// </summary>
-		/// <param name="line">The serialized line for that field</param>
+		/// <param name="fullName">The serialized line for that field</param>
 		/// <returns>The type that corresponds to the type full name</returns>
-		private static Type GetTypeFromJSONLine(string line) {
+		private static Type GetTypeFromJSONLine(string fullName) {
 
-			var typeFullName = Clean(line.Split(':', 2)[1]);
+			//var typeFullName = Clean(line.Split(':', 2)[1]);
 
 			Type type = null;
 			Assembly[] assemblies = AppDomain.CurrentDomain.GetAssemblies();
 			foreach (var assembly in assemblies) {
-				type = assembly.GetType(typeFullName);
+				type = assembly.GetType(fullName);
 				if (type != null) {
 					break;
 				}

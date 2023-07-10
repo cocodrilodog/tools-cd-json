@@ -12,18 +12,25 @@ namespace CocodriloDog.CD_JSON.Examples {
 
 		private void Start() {
 			
-			var serializedClass1 = CD_JSON.Serialize(m_Class1);
-			//Debug.Log($"serializedClass1:\n{serializedClass1}");
-			//var deserializedClass1 = CD_JSON.Deserialize<Class1>(serializedClass1);
-			//Debug.Log($"deserializedClass1:{deserializedClass1}");
+			// Class object
+			var serializedClass1 = CD_JSON.Serialize(m_Class1, true);
+			Debug.Log($"serializedClass1:\n{serializedClass1}");
+			var deserializedClass1 = CD_JSON.Deserialize<Class1>(serializedClass1);
+			Debug.Log($"deserializedClass1:{deserializedClass1}");
 
+			// ScriptableObject
 			m_OriginalSO.m_NullList = null;
 			m_OriginalSO.m_FinalNullList = null;
 			var serializedSO = CD_JSON.Serialize(m_OriginalSO, true);
 			Debug.Log($"serializedSO:\n{serializedSO}");
-
 			m_DeserializedSO = CD_JSON.Deserialize<CD_JSON_ScriptableObject>(serializedSO);
 			Debug.Log($"m_DeserializedSO: {m_DeserializedSO}");
+
+			// TODO: Incomplete Json
+
+			// TODO: Unexpected fields in Json
+
+			// TODO: Multiple references
 
 		}
 
@@ -115,6 +122,14 @@ namespace CocodriloDog.CD_JSON.Examples {
 					$"{ListToString(SomeFloatList1)}), " +
 					$"{ListToString(SomeClass4Array)})";
 			}
+
+			#endregion
+
+
+			#region Private Fields
+
+			[NonSerialized]
+			private string m_NonSerializedField;
 
 			#endregion
 

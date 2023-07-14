@@ -62,9 +62,14 @@ MonoBehaviour:
     - SomeString4: Element3  child
       SomeFloat4: 43.12346
       SomeBool4: 1
+    FinalString: 
+    m_APosition: {x: 4, y: 5, z: 6}
   m_ChildSO: {fileID: 0}
   m_SomeOtherString: Child
+  m_ListOfBool: 
+  m_NullList: []
   m_PolymorphicList:
   - {fileID: 11400000, guid: 24ac38b0b334bb0449ac961cc0ff6053, type: 2}
   - {fileID: 0}
   - {fileID: 11400000, guid: 3b7cfb26c531b7348b5989fd2dabad23, type: 2}
+  m_FinalNullList: []

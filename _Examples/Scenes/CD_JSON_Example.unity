@@ -324,6 +324,7 @@ MonoBehaviour:
       SomeFloat4: 43.12346
       SomeBool4: 1
     FinalString: Chao!
+    m_APosition: {x: 1, y: 2, z: 3}
   m_OriginalSO: {fileID: 11400000, guid: 2e2680e1abd944d2c80d12f28f107a98, type: 2}
   m_DeserializedSO: {fileID: 0}
 --- !u!4 &1749958073

@@ -30,7 +30,7 @@ namespace CocodriloDog.CD_JSON.Examples {
 
 			// TODO: Unexpected fields in Json
 
-			// TODO: Multiple references
+			// TODO: Repeated references
 
 		}
 
@@ -127,6 +127,9 @@ namespace CocodriloDog.CD_JSON.Examples {
 
 
 			#region Private Fields
+
+			[SerializeField]
+			private Vector3 m_APosition;
 
 			[NonSerialized]
 			private string m_NonSerializedField;

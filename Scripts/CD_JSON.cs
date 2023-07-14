@@ -32,6 +32,100 @@ namespace CocodriloDog.CD_JSON {
 
 		#region Public Static Methods
 
+		public static string Serialize(object obj, bool prettyFormat = false) {
+			JObject jObject = CreateJObject(obj);
+			return jObject.ToString(prettyFormat ? Formatting.Indented : Formatting.None);
+		}
+
+		private static JObject CreateJObject(object obj) {
+
+			JObject jObject = new JObject();
+			Type objectType = obj.GetType();
+			IEnumerable<FieldInfo> fields = objectType.GetFields(BindingFlags);
+
+			jObject.Add("cd_json_type", objectType.FullName);
+
+			foreach (FieldInfo field in fields) {
+
+				string propertyName = field.Name;
+				object propertyValue = field.GetValue(obj);
+
+				if (propertyValue == null) {
+					jObject.Add(propertyName, JValue.CreateNull());
+					continue;
+				}
+
+				if (field.FieldType.IsArray) {
+
+					JArray jArray = new JArray();
+					Array array = (Array)propertyValue;
+
+					foreach (object item in array) {
+						JToken jToken = CreateJToken(item);
+						jArray.Add(jToken);
+					}
+
+					jObject.Add(propertyName, jArray);
+
+				} else if (field.FieldType.IsGenericType && field.FieldType.GetGenericTypeDefinition() == typeof(List<>)) {
+
+					JArray jArray = new JArray();
+					IList list = (IList)propertyValue;
+
+					foreach (object item in list) {
+						JToken jToken = CreateJToken(item);
+						jArray.Add(jToken);
+					}
+
+					jObject.Add(propertyName, jArray);
+
+				} else {
+					JToken jToken = CreateJToken(propertyValue);
+					jObject.Add(propertyName, jToken);
+				}
+			}
+
+			static JToken CreateJToken(object value) {
+
+				if (value == null) {
+					return JValue.CreateNull();
+				}
+
+				Type valueType = value.GetType();
+
+				if (IsLeaf(valueType)) {
+				//if (valueType == typeof(string) ||
+				//	valueType == typeof(bool) ||
+				//	valueType == typeof(int) ||
+				//	valueType == typeof(double) ||
+				//	valueType == typeof(decimal) ||
+				//	valueType == typeof(DateTime)) {
+					return JToken.FromObject(value);
+				} else if (value is IEnumerable enumerable) {
+
+					JArray jArray = new JArray();
+
+					foreach (object item in enumerable) {
+						JToken jToken = CreateJToken(item);
+						jArray.Add(jToken);
+					}
+
+					return jArray;
+				} else {
+					JObject jObject = CreateJObject(value);
+					return jObject;
+				}
+			}
+
+			return jObject;
+		}
+
+
+
+
+
+		/*
+
 		/// <summary>
 		/// Creates a JSON string representation of the provided object.
 		/// </summary>
@@ -58,6 +152,11 @@ namespace CocodriloDog.CD_JSON {
 
 			// Add CD_JSON special fields
 			objJSON += $"\"cd_json_type\": \"{obj.GetType().FullName}\",";
+
+			// TODO: m_Name is not being found. This can be changed with custom converters
+			//if (typeof(UnityEngine.Object).IsAssignableFrom(obj.GetType()) && obj != null) {
+			//	objJSON += $"\"m_Name\": \"{(obj as UnityEngine.Object).name}\",";
+			//}
 
 			for (var i = 0; i < fieldInfos.Count; i++) {
 
@@ -114,6 +213,8 @@ namespace CocodriloDog.CD_JSON {
 
 		}
 
+		*/
+
 		/// <summary>
 		/// Deserializes a JSON string and creates an instance of <typeparamref name="T"/>
 		/// with the values stored in the string.
@@ -122,114 +223,21 @@ namespace CocodriloDog.CD_JSON {
 		/// <param name="json">The JSON representation of the object</param>
 		/// <returns>An instance of type <typeparamref name="T"/></returns>
 		public static T Deserialize<T>(string json) {
-			return (T)Deserialize(json);
+			return (T)Deserialize(typeof(T), json);
 		}
 
 		/// <summary>
-		/// Deserializes a JSON string and creates an instance of <paramref name="type"/>
+		/// Deserializes a JSON string and creates an instance of <paramref name="targetType"/>
 		/// with the values stored in the string.
 		/// </summary>
-		/// <param name="type">The type of object to be returned</param>
+		/// <param name="targetType">The type of object to be returned</param>
 		/// <param name="json"></param>
 		/// <returns>The JSON representation of the object</returns>
-		public static object Deserialize(string json) {
-
+		public static object Deserialize(Type targetType, string json) {
 			JObject obj = JObject.Parse(json);
+			return CreateObjectFromJToken(targetType, obj);
 
-			return CreateObjectFromJToken(obj);
 
-			object CreateObjectFromJToken(JToken token) {
-
-				if (token.Type != JTokenType.Object) {
-					throw new ArgumentException("Invalid JToken. Expected an object.");
-				}
-
-				JObject objToken = (JObject)token;
-				string typeName = objToken["cd_json_type"]?.Value<string>();
-
-				if (string.IsNullOrEmpty(typeName)) {
-					throw new ArgumentException("Invalid JToken. 'cd_json_type' property not found or empty.");
-				}
-
-				Type type = Type.GetType(typeName);
-				if (type == null) {
-					throw new ArgumentException($"Invalid type specified: {typeName}");
-				}
-
-				object instance = null;
-				if (typeof(ScriptableObject).IsAssignableFrom(type)) {
-					instance = ScriptableObject.CreateInstance(type);
-				} else {
-					instance = Activator.CreateInstance(type);
-				}
-
-				if (instance == null)
-					throw new InvalidOperationException($"Failed to create an instance of type: {typeName}");
-
-				List<FieldInfo> targetFields = type.GetFields(BindingFlags).ToList();
-
-				foreach (JProperty property in objToken.Properties()) {
-
-					if (property.Name == "cd_json_type")
-						continue;
-
-					FieldInfo field = targetFields.FirstOrDefault(f => f.Name == property.Name);
-					if (field != null) {
-						object value = ConvertValue(property.Value, field.FieldType);
-						field.SetValue(instance, value);
-					}
-
-				}
-
-				return instance;
-			}
-
-			object ConvertValue(JToken valueToken, Type targetType) {
-
-				if (IsArrayOrList(targetType)) {
-
-					Type itemType;
-					if (targetType.IsArray) {
-
-						// Create the array
-						itemType = targetType.GetElementType();
-						var children = valueToken.Children();
-
-						Array array = Array.CreateInstance(itemType, children.Count());
-						int index = 0;
-						foreach (JToken arrayItem in valueToken.Children()) {
-							object listItem = ConvertValue(arrayItem, itemType);
-							array.SetValue(listItem, index);
-							index++;
-						}
-
-						return array;
-
-					} else {
-
-						// Create the list
-						itemType = targetType.GetGenericArguments()[0];
-						var list = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(itemType));
-						foreach (JToken arrayItem in valueToken.Children()) {
-							object listItem = ConvertValue(arrayItem, itemType);
-							list.Add(listItem);
-						}
-
-						return list;
-
-					}
-
-				} else if (valueToken.Type == JTokenType.Object) {
-					return CreateObjectFromJToken(valueToken);
-				} else {
-					if (valueToken.Type == JTokenType.Null) {
-						return null;
-					} else {
-						return valueToken.ToObject(targetType);
-					}
-				}
-
-			}
 
 			/*
 			Stack<ParentCompositeRef> parentRefStack = null;
@@ -410,6 +418,96 @@ namespace CocodriloDog.CD_JSON {
 
 			return instance;
 			*/
+		}
+
+		private static object CreateObjectFromJToken(Type targetType, JObject objToken) {
+
+			string cdJsonTypeName = objToken["cd_json_type"]?.Value<string>();
+
+
+			if (!string.IsNullOrEmpty(cdJsonTypeName)) {
+				Type cdJsonType = Type.GetType(cdJsonTypeName);
+				if (cdJsonType != null) {
+					targetType = cdJsonType;
+				}
+			}
+
+			// TODO: Make this configurable as in Newtonsoft
+			object instance = null;
+			if (typeof(ScriptableObject).IsAssignableFrom(targetType)) {
+				instance = ScriptableObject.CreateInstance(targetType);
+			} else {
+				instance = Activator.CreateInstance(targetType);
+			}
+
+			if (instance == null) {
+				throw new InvalidOperationException($"Failed to create an instance of type: {cdJsonTypeName}");
+			}
+
+			List<FieldInfo> fields = targetType.GetFields(BindingFlags).ToList();
+
+			foreach (JProperty property in objToken.Properties()) {
+
+				if (property.Name == "cd_json_type") {
+					continue;
+				}
+
+				FieldInfo field = fields.FirstOrDefault(f => f.Name == property.Name);
+				if (field != null) {
+					object value = ConvertValue(field.FieldType, property.Value);
+					field.SetValue(instance, value);
+				}
+
+			}
+
+			return instance;
+
+			object ConvertValue(Type targetType, JToken valueToken) {
+
+				if (IsArrayOrList(targetType)) {
+
+					Type itemType;
+					if (targetType.IsArray) {
+
+						// Create the array
+						itemType = targetType.GetElementType();
+						var children = valueToken.Children();
+
+						Array array = Array.CreateInstance(itemType, children.Count());
+						int index = 0;
+						foreach (JToken arrayItem in valueToken.Children()) {
+							object listItem = ConvertValue(itemType, arrayItem);
+							array.SetValue(listItem, index);
+							index++;
+						}
+
+						return array;
+
+					} else {
+
+						// Create the list
+						itemType = targetType.GetGenericArguments()[0];
+						var list = (IList)Activator.CreateInstance(typeof(List<>).MakeGenericType(itemType));
+						foreach (JToken arrayItem in valueToken.Children()) {
+							object listItem = ConvertValue(itemType, arrayItem);
+							list.Add(listItem);
+						}
+
+						return list;
+
+					}
+
+				} else if (valueToken.Type == JTokenType.Object) {
+					return CreateObjectFromJToken(targetType, valueToken as JObject);
+				} else {
+					if (valueToken.Type == JTokenType.Null) {
+						return null;
+					} else {
+						return valueToken.ToObject(targetType);
+					}
+				}
+
+			}
 		}
 
 		#endregion

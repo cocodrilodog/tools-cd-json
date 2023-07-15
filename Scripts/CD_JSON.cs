@@ -1,9 +1,7 @@
 namespace CocodriloDog.CD_JSON {
 
 	using Newtonsoft.Json;
-	using Newtonsoft.Json.Converters;
 	using Newtonsoft.Json.Linq;
-	using Newtonsoft.Json.Serialization;
 	using System;
 	using System.Collections;
 	using System.Collections.Generic;
@@ -48,7 +46,7 @@ namespace CocodriloDog.CD_JSON {
 		/// <returns>The JSON representation of the object</returns>
 		public static object Deserialize(Type targetType, string json) {
 			JObject obj = JObject.Parse(json);
-			return CreateObjectFromJToken(targetType, obj);
+			return CreateObject(targetType, obj);
 		}
 
 		#endregion
@@ -73,14 +71,18 @@ namespace CocodriloDog.CD_JSON {
 			JObject jObject = new JObject();
 			Type objectType = obj.GetType();
 
-			//IEnumerable<FieldInfo> fields = objectType.GetFields(BindingFlags);
 			IEnumerable<FieldInfo> fields = GetFieldInfos(objectType);
 
 			// Add this to support polymorphism
 			jObject.Add("cd_json_type", objectType.FullName);
-			// TODO: To recover the name of the object, we need to use look for PropertyInfo additionally
 
-			foreach (FieldInfo field in fields) {
+			// TODO: This should be configurable in a custom converter
+			// Store the name of the ScriptableObject (it looks like it is not in any field)
+			if (typeof(ScriptableObject).IsAssignableFrom(objectType)) {
+				jObject.Add("m_Name", ((ScriptableObject)obj).name);
+			}
+
+			foreach (var field in fields) {
 
 				string propertyName = field.Name;
 				object propertyValue = field.GetValue(obj);
@@ -162,32 +164,37 @@ namespace CocodriloDog.CD_JSON {
 
 		#region Private Static Methods - Deserialize
 
-		private static object CreateObjectFromJToken(Type targetType, JObject objToken) {
+		private static object CreateObject(Type objectType, JObject objToken) {
 
 			string cdJsonTypeName = objToken["cd_json_type"]?.Value<string>();
-
 
 			if (!string.IsNullOrEmpty(cdJsonTypeName)) {
 				Type cdJsonType = Type.GetType(cdJsonTypeName);
 				if (cdJsonType != null) {
-					targetType = cdJsonType;
+					objectType = cdJsonType;
 				}
 			}
 
-			// TODO: Make this configurable as in Newtonsoft
+			// TODO: This should be configurable in a custom converter
+			// Instantiate the ScriptableObject in a correct manner
 			object instance = null;
-			if (typeof(ScriptableObject).IsAssignableFrom(targetType)) {
-				instance = ScriptableObject.CreateInstance(targetType);
+			if (typeof(ScriptableObject).IsAssignableFrom(objectType)) {
+				instance = ScriptableObject.CreateInstance(objectType);
 			} else {
-				instance = Activator.CreateInstance(targetType);
+				instance = Activator.CreateInstance(objectType);
 			}
 
 			if (instance == null) {
 				throw new InvalidOperationException($"Failed to create an instance of type: {cdJsonTypeName}");
 			}
 
-			//List<FieldInfo> fields = targetType.GetFields(BindingFlags).ToList();
-			List<FieldInfo> fields = GetFieldInfos(targetType).ToList();
+			// TODO: This should be configurable in a custom converter
+			// Assign the name to the ScriptableObject
+			if (instance is ScriptableObject) {
+				((ScriptableObject)instance).name = objToken["m_Name"]?.Value<string>();
+			}
+
+			List<FieldInfo> fields = GetFieldInfos(objectType).ToList();
 
 			foreach (JProperty property in objToken.Properties()) {
 
@@ -241,7 +248,7 @@ namespace CocodriloDog.CD_JSON {
 					}
 
 				} else if (valueToken.Type == JTokenType.Object) {
-					return CreateObjectFromJToken(targetType, valueToken as JObject);
+					return CreateObject(targetType, valueToken as JObject);
 				} else {
 					if (valueToken.Type == JTokenType.Null) {
 						return null;
@@ -283,6 +290,7 @@ namespace CocodriloDog.CD_JSON {
 		// TODO: It seems that the inherited fields are already being included with just type.GetFields(BindingFlags)
 		// however, GetFieldInfos is getting: m_CachedPtr, m_InstanceID, m_UnityRuntimeErrorString for some reason. We need 
 		// to understand why
+
 		/// <summary>
 		/// Finds all fields, including non-public and inherited.
 		/// </summary>
@@ -308,6 +316,7 @@ namespace CocodriloDog.CD_JSON {
 				}
 			}
 
+			// Return unique field infos
 			return fieldInfosList.Distinct(new FieldInfoEqualityComparer()).ToArray();
 		}
 
@@ -316,8 +325,10 @@ namespace CocodriloDog.CD_JSON {
 
 	}
 
-	// TODO: Study this
 	public class FieldInfoEqualityComparer : IEqualityComparer<FieldInfo> {
+
+
+		#region Public Methods
 
 		public bool Equals(FieldInfo x, FieldInfo y) {
 			if (ReferenceEquals(x, y))
@@ -330,6 +341,9 @@ namespace CocodriloDog.CD_JSON {
 		public int GetHashCode(FieldInfo obj) {
 			return obj.Name.GetHashCode();
 		}
+
+		#endregion
+
 
 	}
 

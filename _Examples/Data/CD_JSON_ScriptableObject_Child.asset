@@ -62,7 +62,7 @@ MonoBehaviour:
     - SomeString4: Element3  child
       SomeFloat4: 43.12346
       SomeBool4: 1
-    FinalString: 
+    FinalString: The final countdown child
     m_APosition: {x: 4, y: 5, z: 6}
   m_ChildSO: {fileID: 0}
   m_SomeOtherString: Child

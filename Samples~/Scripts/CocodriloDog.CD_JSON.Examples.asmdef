@@ -1,0 +1,16 @@
+{
+    "name": "CocodriloDog.CD_JSON.Examples",
+    "rootNamespace": "",
+    "references": [
+        "GUID:6d68cafe93a83e949b355f00c7858682"
+    ],
+    "includePlatforms": [],
+    "excludePlatforms": [],
+    "allowUnsafeCode": false,
+    "overrideReferences": false,
+    "precompiledReferences": [],
+    "autoReferenced": true,
+    "defineConstraints": [],
+    "versionDefines": [],
+    "noEngineReferences": false
+}

@@ -20,7 +20,7 @@
   "samples": [
     {
       "displayName": "Examples",
-      "description": "Contains example scenes for CD JSON use cases.",
+      "description": "Contains an example scene for CD JSON use cases.",
       "path": "Samples~"
     }
   ]

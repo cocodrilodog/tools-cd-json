@@ -1,0 +1,27 @@
+{
+  "name": "com.cocodrilodog.cdjson",
+  "version": "1.0.0",
+  "displayName": "CD JSON",
+  "description": "Serializes and deserializes Unity data with specific requirements of Cocodrilo Dog.",
+  "unity": "2019.3",
+  "documentationUrl": "https://github.com/cocodrilodog/tools-cd-json",
+  "changelogUrl": "https://example.com/changelog.html",
+  "licensesUrl": "https://example.com/licensing.html",
+  "keywords": [
+    "keyword1",
+    "keyword2",
+    "keyword3"
+  ],
+  "author": {
+    "name": "Cocodrilo Dog",
+    "email": "contact@cocodrilodog.com",
+    "url": "https://www.cocodrilodog.com"
+  },
+  "samples": [
+    {
+      "displayName": "Examples",
+      "description": "Contains example scenes for CD JSON use cases.",
+      "path": "Samples~"
+    }
+  ]
+}

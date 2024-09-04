@@ -23,5 +23,8 @@
       "description": "Contains an example scene for CD JSON use cases.",
       "path": "Samples~"
     }
-  ]
+  ],
+  "dependencies": {
+    "com.unity.nuget.newtonsoft-json": "3.2.1"
+  }
 }
